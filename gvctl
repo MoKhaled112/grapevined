@@ -2,22 +2,103 @@
 
 # gvctl -- Grapevine Control
 
+import argparse
+from pathlib import Path
 import socket
 import json
-import time
+import sys
 
-command: dict[str, str] = {
-    "command": "",
-    "payload": "bing bong.flac"
-}
+def send_command(command: dict[str, str]) -> None:
+    success: bool = False
+    # port range is 6990 - 7000
+    for port in range(6990, 7001):
+        try:
+            with socket.create_connection(("127.0.0.1", port)) as sock:
+                sock.sendall(json.dumps(command).encode("utf-8"))
+                success = True
+                break
+        except (ConnectionRefusedError, socket.timeout):
+            print(f"Failed to connect to Grapevine at port {port}")
+
+    if not success: # ran through all the ports
+        print("Failed to connect to Grapevine on all ports (6990-7000), make sure grapevined is running.")
+
+def play_cmd(args) -> None:
+    path = Path(args.file)
+    if not path.is_file():
+        print(f"{args.file} does not exist or is a folder/directory")
+        return
+
+    if not path.suffix in ('.mp3', '.flac'):
+        print("can only play .mp3 and .flac files")
+        return
 
 
+    send_command({
+        "command": "PLAY_FILE",
+        "payload": args.file
+    })
 
-for cmd in ["PLAY_FILE", "PLAY_PLAYLIST", "PAUSE", "BING_BONG", "SHUTDOWN"]:
-    command["command"] = cmd
-    with socket.create_connection(("127.0.0.1", 6990)) as s:
-        s.sendall(json.dumps(command).encode("utf-8"))
-    
-    time.sleep(3)
+def play_playlist_cmd(args) -> None:
+    path = Path(args.file)
+    if not path.is_file():
+        print(f"{args.file} does not exist or is a folder/directory")
+        return
+
+    if not path.suffix == '.m3u':
+        print("the only supported playlist file format is .m3u")
+        return
+
+    send_command({
+        "command": "PLAY_PLAYLIST",
+        "payload": args.file
+    })
+
+def shutdown_cmd(args) -> None:
+    send_command({
+        "command": "SHUTDOWN"
+    })
+
+def pause_cmd(args) -> None:
+    send_command({
+        "command": "PAUSE"
+    })
+
+def main() -> None:
+    parser = argparse.ArgumentParser(allow_abbrev=False, description="gvctl -- Grapevine Control Tool")
+    parser.add_argument("-l", "--loop", action="store_true", help="loop the current song")
+    subparser = parser.add_subparsers(title="Commands")
+
+    play = subparser.add_parser("play", help="play a single file")
+    play.add_argument("file", help="path of file to play, has to be .mp3 or .flac")
+    play.set_defaults(func=play_cmd)
+
+    playlist = subparser.add_parser("play-playlist", help="play a playlist (.m3u) file")
+    playlist.add_argument("file", help="path of .m3u file")
+    playlist.set_defaults(func=play_playlist_cmd)
+
+    shutdown = subparser.add_parser("shutdown", help="shuts down grapevined")
+    shutdown.set_defaults(func=shutdown_cmd)
+
+    pause = subparser.add_parser("pause", help="pauses the current song")
+    pause.set_defaults(func=pause_cmd)
+    resume = subparser.add_parser("resume", help="resumes the current song")
+    resume.set_defaults(func=pause_cmd)
+
+    if len(sys.argv) <= 1:
+        parser.print_help()
+        sys.exit(1)
+
+    args = parser.parse_args()
+    if args.loop:
+        send_command({"command": "LOOP"})
+        sys.exit(1)
 
 
+    if hasattr(args, 'func'):
+        args.func(args)
+    else:
+        parser.print_help()
+
+if __name__ == "__main__":
+    main()
