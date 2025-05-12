@@ -1,0 +1,23 @@
+#!/usr/bin/env python
+
+# gvctl -- Grapevine Control
+
+import socket
+import json
+import time
+
+command: dict[str, str] = {
+    "command": "",
+    "payload": "bing bong.flac"
+}
+
+
+
+for cmd in ["PLAY_FILE", "PLAY_PLAYLIST", "PAUSE", "BING_BONG", "SHUTDOWN"]:
+    command["command"] = cmd
+    with socket.create_connection(("127.0.0.1", 6990)) as s:
+        s.sendall(json.dumps(command).encode("utf-8"))
+    
+    time.sleep(3)
+
+
