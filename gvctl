@@ -15,6 +15,17 @@ def send_command(command: dict[str, str]) -> None:
         try:
             with socket.create_connection(("127.0.0.1", port)) as sock:
                 sock.sendall(json.dumps(command).encode("utf-8"))
+
+                buffer = b""
+                while not buffer.endswith(b'\n'):
+                    chunk = sock.recv(4096)
+                    if not chunk:
+                        break  # Connection closed
+                    buffer += chunk
+
+                # Decode and parse JSON
+                response = json.loads(buffer.decode("utf-8"))
+                print(response)  # This is now a Python dict
                 success = True
                 break
         except (ConnectionRefusedError, socket.timeout):
@@ -23,7 +34,7 @@ def send_command(command: dict[str, str]) -> None:
     if not success: # ran through all the ports
         print("Failed to connect to Grapevine on all ports (6990-7000), make sure grapevined is running.")
 
-def play_cmd(args) -> None:
+def add_queue_cmd(args) -> None:
     path = Path(args.file)
     if not path.is_file():
         print(f"{args.file} does not exist or is a folder/directory")
@@ -35,7 +46,7 @@ def play_cmd(args) -> None:
 
 
     send_command({
-        "command": "PLAY_FILE",
+        "command": "ADD_QUEUE",
         "payload": args.file
     })
 
@@ -69,9 +80,9 @@ def main() -> None:
     parser.add_argument("-l", "--loop", action="store_true", help="loop the current song")
     subparser = parser.add_subparsers(title="Commands")
 
-    play = subparser.add_parser("play", help="play a single file")
-    play.add_argument("file", help="path of file to play, has to be .mp3 or .flac")
-    play.set_defaults(func=play_cmd)
+    add_queue = subparser.add_parser("add-queue", help="play a single file")
+    add_queue.add_argument("file", help="path of file to play, has to be .mp3 or .flac")
+    add_queue.set_defaults(func=add_queue_cmd)
 
     playlist = subparser.add_parser("play-playlist", help="play a playlist (.m3u) file")
     playlist.add_argument("file", help="path of .m3u file")
