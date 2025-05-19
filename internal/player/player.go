@@ -21,6 +21,8 @@ type PlayerContext struct {
     index       int
     size        int
     active      bool
+    loopSong    bool
+    loopPl      bool
 
     log         *slog.Logger
     skip        chan struct{}
@@ -52,6 +54,8 @@ func Initialize(logger *slog.Logger, cmd <- chan server.Command, resp chan <- se
         index:      0,
         size:       0,
         active:     false,
+        loopSong:   false,
+        loopPl:     false,
         log:        logger,
         skip:       make(chan struct{}),
         finished:   make(chan struct{}),
@@ -128,10 +132,13 @@ func asyncPlay(streamer beep.StreamSeekCloser, file *os.File) {
     }
 
     // gg go next
-    player.active = false
     player.current = nil
-    player.queue = player.queue[1:]
-    player.size--
+    // CLEAR will set the queue to `nil`
+    if !player.loopSong && player.queue != nil {
+        player.queue = player.queue[1:]
+        player.size--
+    }
+    player.active = false
 
     // TODO: allow for the looping of a single song/playlist
     // use player.index to facilitate playlist looping and a boolean for

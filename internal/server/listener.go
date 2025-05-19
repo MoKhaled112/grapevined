@@ -116,6 +116,8 @@ func listen() {
 func validate(cmd Command) bool {
     switch cmd.Command {
     case
+        "SKIP",
+        "CLEAR",
         "PAUSE",            // reuse for resuming as well
         "SHUTDOWN",
         "LOOP_SONG",        // only loop the currently playing song

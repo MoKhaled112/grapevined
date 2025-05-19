@@ -45,8 +45,15 @@ func interpretCommand(cmd server.Command) (server.Response, error) {
         }
 
         resp = addQueue(*cmd.Payload)
+
     case "PAUSE":
         resp = pauseSong()
+
+    case "CLEAR":
+        resp = clearPlayer()
+
+    case "LOOP_SONG":
+        resp = loopSong()
 
     // TODO: support for ADD_PLAYLIST, looping, SET_VOLUME
     }
