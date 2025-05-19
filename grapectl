@@ -1,0 +1,121 @@
+#!/usr/bin/env python
+
+# grapectl -- Grapevine Controller Tool
+
+from pathlib import Path
+import argparse
+import socket
+import json
+import sys
+
+def send_command(command: dict[str, str]) -> None:
+    success: bool = False
+
+    # Attempt to connect to grapevined on ports 6990-7000
+    for port in range(6990, 7001):
+        try:
+            with socket.create_connection(("127.0.0.1", port)) as sock:
+                sock.sendall(json.dumps(command).encode("utf-8"))
+
+                data = sock.recv(4096)
+                if data: # SHUTDOWN will not return anything, for now at least
+                    response = json.loads(data.decode())
+
+                    if response["STATUS"] != "OK":
+                        print(f"Command failed to execute: {response['ERRMSG']}")
+
+                success = True
+                break
+
+        except (ConnectionRefusedError, socket.timeout):
+            print(f"Failed to connect to grapevined at port {port}")
+
+
+    if not success:
+        print("Failed to connect to Grapevine on all ports (6990-7000), make sure grapevined is running")
+
+def add_queue_cmd(args) -> None:
+    path = Path(args.file)
+    if not path.is_file():
+        print(f"{args.file} does not exist or is a folder/directory")
+        return
+
+    if not path.suffix in (".mp3", ".flac"):
+        print("only .mp3 and .flac files are supported")
+        return
+
+    send_command({"command": "ADD_QUEUE", "payload": args.file})
+
+def add_playlist_cmd(args) -> None:
+    path = Path(args.file)
+    if not path.is_file():
+        print(f"{args.file} does not exist or is a folder/directory")
+        return
+
+    if not path.suffix == ".m3u":
+        print("the only supported playlist file format is .m3u")
+        return
+
+    send_command({"command": "ADD_PLAYLIST", "payload": args.file})
+
+def shutdown_cmd(args) -> None:
+    send_command({"command": "SHUTDOWN","payload": ""})
+
+def pause_cmd(args) -> None:
+    send_command({"command": "PAUSE", "payload": ""})
+
+def skip_cmd(args) -> None:
+    send_command({"command": "SKIP", "payload": ""})
+
+def clear_cmd(args) -> None:
+    send_command({"command": "CLEAR", "payload": ""})
+
+
+def main() -> None:
+    parser = argparse.ArgumentParser(allow_abbrev=False, description="grapectl -- Grapevine Control Tool")
+    parser.add_argument("-l", "--loop", action="store_true", help="loop the current song")
+    parser.add_argument("-lp", "--loop-pl", action="store_true", help="loop the entire playlist")
+    subparser = parser.add_subparsers(title="Commands")
+
+    add_queue = subparser.add_parser("add-queue", help="play a single file")
+    add_queue.add_argument("file", help="path of file to play, has to be .mp3 or .flac")
+    add_queue.set_defaults(func=add_queue_cmd)
+
+    add_pl = subparser.add_parser("add-playlist", help="play a playlist (.m3u) file")
+    add_pl.add_argument("file", help="path of .m3u file")
+    add_pl.set_defaults(func=add_playlist_cmd)
+
+    shutdown = subparser.add_parser("shutdown", help="shuts down grapevined")
+    shutdown.set_defaults(func=shutdown_cmd)
+
+    pause = subparser.add_parser("pause", help="pauses the current song")
+    pause.set_defaults(func=pause_cmd)
+    resume = subparser.add_parser("resume", help="resumes the current song")
+    resume.set_defaults(func=pause_cmd)
+
+    skip = subparser.add_parser("skip", help="skips the current song")
+    skip.set_defaults(func=skip_cmd)
+
+    clear = subparser.add_parser("clear", help="clears the player and queue")
+    clear.set_defaults(func=clear_cmd)
+
+    if len(sys.argv) <= 1:
+        parser.print_help()
+        sys.exit(1)
+
+    args = parser.parse_args()
+    if args.loop:
+        send_command({"command": "LOOP_SONG", "payload": ""})
+        sys.exit(1)
+
+    if args.loop_pl:
+        send_command({"command": "LOOP_PLAYLIST", "payload": ""})
+
+
+    if hasattr(args, 'func'):
+        args.func(args)
+    else:
+        parser.print_help()
+
+if __name__ == "__main__":
+    main()
