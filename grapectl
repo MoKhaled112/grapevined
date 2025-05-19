@@ -74,7 +74,7 @@ def clear_cmd(args) -> None:
 def main() -> None:
     parser = argparse.ArgumentParser(allow_abbrev=False, description="grapectl -- Grapevine Control Tool")
     parser.add_argument("-l", "--loop", action="store_true", help="loop the current song")
-    parser.add_argument("-lp", "--loop-pl", action="store_true", help="loop the entire playlist")
+    parser.add_argument("-lp", "--loop-playlist", action="store_true", help="loop the entire playlist")
     subparser = parser.add_subparsers(title="Commands")
 
     add_queue = subparser.add_parser("add-queue", help="play a single file")
@@ -108,8 +108,9 @@ def main() -> None:
         send_command({"command": "LOOP_SONG", "payload": ""})
         sys.exit(1)
 
-    if args.loop_pl:
+    if args.loop_playlist:
         send_command({"command": "LOOP_PLAYLIST", "payload": ""})
+        sys.exit(1)
 
 
     if hasattr(args, 'func'):

@@ -23,8 +23,8 @@ func Listen() error {
 
             player.response <- resp
         default:
-            if !player.active && player.size > 0 {
-                PlayFile(player.queue[0])
+            if !player.active && len(player.queue) > 0 {
+                PlayFile(player.queue[player.index])
             }
 
             time.Sleep(250 * time.Millisecond)
@@ -33,18 +33,22 @@ func Listen() error {
 }
 
 func interpretCommand(cmd server.Command) (server.Response, error) {
-    var (
-        resp    server.Response
-        err     error
-    )
+    var resp    server.Response
 
     switch cmd.Command {
     case "ADD_QUEUE":
         if cmd.Payload == nil {
-            return server.Response{Status: "ERR", ErrMsg: "missing payload"}, err
+            return server.Response{Status: "ERR", ErrMsg: "missing payload"}, errors.New("missing song file")
         }
 
         resp = addQueue(*cmd.Payload)
+
+    case "ADD_PLAYLIST":
+        if cmd.Payload == nil {
+            return server.Response{Status: "ERR", ErrMsg: "missing payload"}, errors.New("missing playlist file")
+        }
+
+        resp = addPlaylist(*cmd.Payload)
 
     case "PAUSE":
         resp = pauseSong()
@@ -54,6 +58,13 @@ func interpretCommand(cmd server.Command) (server.Response, error) {
 
     case "LOOP_SONG":
         resp = loopSong()
+
+    case "LOOP_PLAYLIST":
+        resp = loopPlaylist()
+
+    case "SKIP":
+        resp = skipSong()
+
 
     // TODO: support for ADD_PLAYLIST, looping, SET_VOLUME
     }

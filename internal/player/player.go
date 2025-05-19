@@ -123,6 +123,7 @@ func asyncPlay(streamer beep.StreamSeekCloser, file *os.File) {
     speaker.Play(seq)
     player.active = true
     player.log.Info("starting playback", "SongPath", file.Name())
+
     select {
     case <- player.skip:
         speaker.Clear()
@@ -132,15 +133,40 @@ func asyncPlay(streamer beep.StreamSeekCloser, file *os.File) {
     }
 
     // gg go next
-    player.current = nil
-    // CLEAR will set the queue to `nil`
-    if !player.loopSong && player.queue != nil {
-        player.queue = player.queue[1:]
-        player.size--
-    }
-    player.active = false
+    moveNext()
+}
 
-    // TODO: allow for the looping of a single song/playlist
-    // use player.index to facilitate playlist looping and a boolean for
-    // single song looping (beep.Loop is not toggleable afaik)
+func moveNext() {
+    if player.queue == nil {
+        player.active = false
+        return
+    }
+
+    player.current = nil
+    if player.loopSong {
+        player.active = false
+        return
+    }
+
+    if player.loopPl {
+        player.index++
+        // wrap around to the start of the queue
+        if player.index == len(player.queue) {
+            player.index = 0
+        }
+
+        player.active = false
+        return
+    }
+
+    if player.index >= len(player.queue) {
+        player.index = 0
+    }
+
+    player.queue = append(player.queue[:player.index], player.queue[player.index + 1:]...)
+    if player.index >= len(player.queue) {
+        player.index = 0
+    }
+
+    player.active = false
 }
