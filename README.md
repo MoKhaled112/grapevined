@@ -1,20 +1,19 @@
+<p>
+  <img src="./grapevine.png", width="200", style="display: block; margin: 0 auto"/>
+</p>
 
+<h1 style="text-align: center;">grapevined - a music player service</h1>
 
-<table>
-  <tr>
-    <td><img src="./grapevine.png" alt="Image" style="max-height: 200px;"></td>
-    <td style="vertical-align: middle; padding-left: 20px;">
-    <h1> grapevined - a music player service </h1>
-    </td>
-  </tr>
-</table>
 
 ## Features
 - Support for playing MP3 and FLAC files (everything is resampled to 44.1khz)
+
 - Support for .m3u playlist files
   - Disclaimer: Grapevine does NOT support extended m3u files (`#EXTM3U`), only base m3u files are supported.
 - Song queue
+
 - Looping individual songs and the entire queue
+
 - pausing and skipping
 
 
@@ -24,7 +23,9 @@ Currently, the only way to install Grapevine is to build from source.
 
 **Requirements**
 - go 1.24.2 or later
+
 - python 3.2 or later (needed for `argparse`)
+
 - if on linux, the latest version of `alsa` is needed for Oto
 
 **Steps**
@@ -66,5 +67,7 @@ This project is released under the MIT License which can be found [here](https:/
 ## Fun Facts
 - To motivate myself to finish the player, I bought 3 FLAC files from an artist I liked and did not allow myself to use a music player to play them
 
-- The name `Grapevine` is a parody of `Widevine DRM` which did not want to work on NixOS under the Asahi Linux kernel meaning I could not listen to Spotify since it is DRM protected and it does not have an aarch64 build. I also just really love green grapes.
+- The name "Grapevine" is a parody of "Widevine DRM" which did not want to work on NixOS under the Asahi Linux kernel meaning I could not listen to Spotify since it is DRM protected and it does not have an aarch64 build. I also just really love green grapes.
+
+- the name "Grapevine" refers to the combination of `grapevined` and `grapectl` or any other controller.
 
