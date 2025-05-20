@@ -1,8 +1,7 @@
 <div align="center">
-<img src="./grapevine.png", width="200", style="display: block; margin:
+  <img src="./grapevine.png", width="200", style="display: block; margin: 0 auto"/>
 
 # grapevined - a music player service
-
 </div>
 
 ## Features
