@@ -19,6 +19,7 @@ func clearPlayer() server.Response {
 
     player.queue = nil
     player.size = 0
+    player.index = 0
     
     if player.active {
         // better to let asyncPlay clear the speaker and set
