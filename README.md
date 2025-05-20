@@ -1,9 +1,9 @@
-<p>
-  <img src="./grapevine.png", width="200", style="display: block; margin: 0 auto"/>
-</p>
+<div align="center">
+<img src="./grapevine.png", width="200", style="display: block; margin:
 
-<h1 style="text-align: center;">grapevined - a music player service</h1>
+# grapevined - a music player service
 
+</div>
 
 ## Features
 - Support for playing MP3 and FLAC files (everything is resampled to 44.1khz)
