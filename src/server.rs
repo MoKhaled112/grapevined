@@ -67,7 +67,7 @@ fn conn_helper(mut conn: TcpStream, tx: Sender<(Command, Sender<Response>)>) {
     let packet: Command = match serde_json::from_slice(&buffer[..size]) {
         Ok(p) => p,
         Err(_) => {
-            tracing::error!("could not deserialze incoming packet");
+            tracing::error!("could not deserialize incoming packet");
             return;
         }
     };

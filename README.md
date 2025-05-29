@@ -68,6 +68,6 @@ This project is released under the MIT License which can be found [here](https:/
 
 - The name "Grapevine" refers to the combination of `grapevined` and `grapectl` or any other controller.
 
-- This project was rewritten from Go to Rust because of an issue within the Oto library insanely high 'Idle Wake Ups' on MacOS.
+- This project was rewritten from Go to Rust because of an issue within the Oto library causing insanely high 'Idle Wake Ups' and CPU usage on MacOS.
 
 - Literally never wrote Rust before this rewrite
