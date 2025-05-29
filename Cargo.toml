@@ -1,0 +1,14 @@
+[package]
+name = "grapevined"
+version = "0.1.0"
+edition = "2024"
+
+[dependencies]
+crossbeam = { version = "0.8.4", features = ["crossbeam-channel"] }
+dirs = "6.0.0"
+rodio = "0.20.1"
+serde = { version="1.0.219", features = ["derive"] }
+serde_json = "1.0.140"
+tracing = "0.1.41"
+tracing-appender = "0.2.3"
+tracing-subscriber = "0.3.19"
