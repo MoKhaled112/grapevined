@@ -12,7 +12,6 @@ pub enum CommandTypes {
     AddQueue,
     LoopSong,
     LoopQueue,
-    SetVolume,
     AddPlaylist,
 }
 
@@ -48,7 +47,7 @@ impl Command {
     pub fn validate_payload(&self) -> bool {
         matches!(
             self.command,
-            CommandTypes::AddPlaylist | CommandTypes::AddQueue | CommandTypes::SetVolume
+            CommandTypes::AddPlaylist | CommandTypes::AddQueue
         )
         .then(|| self.payload.is_some())
         .unwrap_or(true)

@@ -1,52 +1,56 @@
-use crossbeam::channel::{select_biased, Receiver, Sender};
+use crossbeam::channel::{select_biased, tick, Receiver, Sender};
 use rodio::{Decoder, OutputStream, Sink};
 use std::fs::File;
 use std::io::BufReader;
 use std::path::PathBuf;
+use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::Arc;
+use std::time::Instant;
 use tracing;
 
 use crate::queue::Queue;
 use crate::shared::{Command, CommandTypes, Response, Signal};
 
+static IS_PLAYING: AtomicBool = AtomicBool::new(false);
+
 pub struct PlayerContext {
     queue: Queue,
-    sink: Arc<Sink>,
-    _stream: OutputStream,
-    is_playing: bool,
-    ready: Signal,
     receiver: Receiver<(Command, Sender<Response>)>,
+    sink: Arc<Sink>,
+    stop: Signal,
+    ticker: Receiver<Instant>,
+    _stream: OutputStream,
 }
 
 impl PlayerContext {
     pub fn new(receiver: Receiver<(Command, Sender<Response>)>) -> Self {
-        let ready = Signal::new();
+        let stop = Signal::new();
+        let queue = Queue::new();
         let (stream, handle) = OutputStream::try_default().unwrap();
         let sink = Arc::new(Sink::try_new(&handle).unwrap());
+        let ticker = tick(std::time::Duration::from_millis(250));
 
         Self {
-            queue: Queue::new(),
-            sink,
-            _stream: stream,
-            is_playing: false,
-            ready,
+            queue,
             receiver,
+            sink,
+            stop,
+            ticker,
+            _stream: stream,
         }
     }
 
     pub fn start_player(&mut self) {
         loop {
             select_biased! {
-                recv(self.receiver) -> packet => {
-                    self.interpret_packet(packet.unwrap());
-                },
-                recv(self.ready.rx) -> _ => {
-                    if self.is_playing {
+                recv(self.receiver) -> packet => self.read_packet(packet.unwrap()),
+                recv(self.stop.rx) -> _ => break,
+                recv(self.ticker) -> _ => {
+                    if !IS_PLAYING.load(Ordering::SeqCst) && !self.queue.is_empty() {
+                        self.play_file();
                         self.queue.move_next();
                     }
-
-                    self.play_file();
-                },
+                }
             }
         }
     }
@@ -54,16 +58,10 @@ impl PlayerContext {
     fn play_file(&mut self) {
         let next = match self.queue.peek() {
             Some(path) => path,
-            None => {
-                tracing::info!("played every song in the queue");
-                if self.is_playing {
-                    self.is_playing = false;
-                }
-                return;
-            }
+            None => return,
         };
 
-        let file = match File::open(next.clone()) {
+        let file = match File::open(PathBuf::from(next.clone())) {
             Ok(f) => f,
             Err(_) => {
                 tracing::warn!("failed to open {}, removing from queue", next.display());
@@ -82,57 +80,51 @@ impl PlayerContext {
         };
 
         self.sink.append(decoder);
-        let cloned_sink = self.sink.clone();
-        let ready_tx_clone = self.ready.tx.clone();
-        std::thread::spawn(move || {
-            cloned_sink.sleep_until_end();
-            let _ = ready_tx_clone.send(());
-        });
+        IS_PLAYING.store(true, Ordering::SeqCst);
 
-        if !self.is_playing {
-            self.is_playing = true;
-        }
+        let cloned = self.sink.clone();
+        std::thread::spawn(move || {
+            cloned.sleep_until_end();
+            IS_PLAYING.store(false, Ordering::SeqCst);
+        });
     }
 
-    fn interpret_packet(&mut self, packet: (Command, Sender<Response>)) {
+    fn read_packet(&mut self, packet: (Command, Sender<Response>)) {
         let (command, tx) = packet;
         match command.command {
             CommandTypes::Skip => self.skip(tx),
             CommandTypes::Clear => self.clear(tx),
             CommandTypes::Pause => self.pause(tx),
             CommandTypes::Resume => self.resume(tx),
-            CommandTypes::Shutdown => {}
+            CommandTypes::Shutdown => self.shutdown(tx),
             CommandTypes::AddQueue => self.add_queue(command, tx),
             CommandTypes::LoopSong => self.loop_song(tx),
             CommandTypes::LoopQueue => self.loop_queue(tx),
-            CommandTypes::SetVolume => {}
-            CommandTypes::AddPlaylist => {}
+            CommandTypes::AddPlaylist => self.add_playlist(command, tx),
         }
     }
 
-    fn skip(&mut self, tx: Sender<Response>) {
-        if !self.is_playing {
+    fn skip(&self, tx: Sender<Response>) {
+        if !IS_PLAYING.load(Ordering::SeqCst) {
             let _ = tx.send(Response::err("no song is currently playing"));
             return;
         }
 
-        // this causes start_player to move to the next song on its own
         self.sink.stop();
         let _ = tx.send(Response::ok());
     }
 
     fn clear(&mut self, tx: Sender<Response>) {
         self.queue.clear();
-        if self.is_playing {
+        if IS_PLAYING.load(Ordering::SeqCst) {
             self.sink.stop();
-            self.is_playing = false
         }
 
         let _ = tx.send(Response::ok());
     }
 
     fn pause(&self, tx: Sender<Response>) {
-        if !self.is_playing {
+        if !IS_PLAYING.load(Ordering::SeqCst) {
             let _ = tx.send(Response::err("no song is currently playing"));
             return;
         }
@@ -154,22 +146,26 @@ impl PlayerContext {
         let _ = tx.send(Response::ok());
     }
 
+    fn shutdown(&mut self, tx: Sender<Response>) {
+        self.queue.clear();
+        self.sink.stop();
+        let _ = self.stop.tx.send(());
+        let _ = tx.send(Response::ok());
+    }
+
     fn add_queue(&mut self, command: Command, tx: Sender<Response>) {
         if !command.validate_payload() {
-            let _ = tx.send(Response::err("ADD_QUEUE is missing its payload"));
+            let _ = tx.send(Response::err("ADD_QUEUE packet is missing its payload"));
             return;
         }
 
         let path = command.payload.unwrap();
         self.queue.append(PathBuf::from(path));
         let _ = tx.send(Response::ok());
-        if !self.is_playing {
-            let _ = self.ready.tx.send(());
-        }
     }
 
     fn loop_song(&mut self, tx: Sender<Response>) {
-        if !self.is_playing {
+        if !IS_PLAYING.load(Ordering::SeqCst) {
             let _ = tx.send(Response::err("no song is currently playing"));
             return;
         }
@@ -187,6 +183,32 @@ impl PlayerContext {
         }
 
         self.queue.loop_queue();
+        let _ = tx.send(Response::ok());
+    }
+
+    fn add_playlist(&mut self, command: Command, tx: Sender<Response>) {
+        if !command.validate_payload() {
+            let _ = tx.send(Response::err("ADD_PLAYLIST packet is missing its payload"));
+            return;
+        }
+
+        self.queue.clear();
+        if IS_PLAYING.load(Ordering::SeqCst) {
+            self.sink.stop();
+        }
+
+        let path = command.payload.unwrap();
+        let size = match self.queue.load_m3u(PathBuf::from(path.clone())) {
+            Some(s) => s,
+            None => {
+                let _ = tx.send(Response::err(
+                    "failed to process playlist file, check your logs for more information",
+                ));
+                return;
+            }
+        };
+
+        tracing::info!("added {} items to the queue from {}", size, path);
         let _ = tx.send(Response::ok());
     }
 }

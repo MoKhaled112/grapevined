@@ -1,4 +1,6 @@
 use std::collections::VecDeque;
+use std::fs::File;
+use std::io::{BufRead, BufReader};
 use std::path::PathBuf;
 
 pub struct Queue {
@@ -71,5 +73,37 @@ impl Queue {
         if self.index >= self.deque.len() {
             self.index = 0;
         }
+    }
+
+    pub fn load_m3u(&mut self, path: PathBuf) -> Option<usize> {
+        // check if it is a .m3u file
+        if !path.extension().map(|s| s == "m3u").unwrap_or(false) {
+            tracing::warn!("{} is not a .m3u file", path.display());
+            return None;
+        }
+
+        let file = match File::open(path.clone()) {
+            Ok(f) => f,
+            Err(_) => {
+                tracing::warn!("failed to open {}", path.display());
+                return None;
+            }
+        };
+
+        let reader = BufReader::new(file);
+        let mut size = 0;
+
+        for line in reader.lines() {
+            let curr = line.unwrap().trim().to_string();
+            if curr.is_empty() || curr.starts_with("#") {
+                // ignore empty lines and #EXTM3U/#EXTINFO
+                continue;
+            }
+
+            size += 1;
+            self.deque.push_back(PathBuf::from(curr));
+        }
+
+        Some(size)
     }
 }

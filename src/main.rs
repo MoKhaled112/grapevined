@@ -44,4 +44,5 @@ fn main() {
     let mut player_context = PlayerContext::new(receiver);
     tracing::info!("starting music thread");
     player_context.start_player();
+    tracing::info!("grapevined has shutdown");
 }
