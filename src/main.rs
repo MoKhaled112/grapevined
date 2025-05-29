@@ -7,8 +7,11 @@ use dirs;
 
 mod shared;
 mod server;
+mod queue;
+mod player;
 
 use crate::shared::{Command, Response};
+use crate::player::PlayerContext;
 use crate::server::TcpContext;
 
 fn create_log_appender() -> RollingFileAppender {
@@ -38,4 +41,8 @@ fn main() {
         tcp_context.start_listener();
     });
     tracing::info!("started TCP server");
+
+    let mut player_context = PlayerContext::new(receiver);
+    tracing::info!("starting music thread");
+    player_context.start_player();
 }
