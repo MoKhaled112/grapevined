@@ -27,7 +27,7 @@ impl Queue {
     }
 
     pub fn remove_curr(&mut self) {
-        let _removed =  self.deque.remove(self.index);
+        let _removed = self.deque.remove(self.index);
     }
 
     pub fn is_empty(&self) -> bool {
@@ -55,7 +55,7 @@ impl Queue {
 
     pub fn move_next(&mut self) {
         if self.loop_curr {
-            return
+            return;
         }
 
         if self.loop_all {
@@ -73,4 +73,3 @@ impl Queue {
         }
     }
 }
-

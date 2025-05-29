@@ -1,14 +1,13 @@
-use crossbeam::channel::{Receiver, Sender, select_biased};
+use crossbeam::channel::{select_biased, Receiver, Sender};
 use rodio::{Decoder, OutputStream, Sink};
+use std::fs::File;
 use std::io::BufReader;
 use std::path::PathBuf;
 use std::sync::Arc;
-use std::fs::File;
 use tracing;
 
-use crate::shared::{Command, CommandTypes, Response, Signal};
 use crate::queue::Queue;
-
+use crate::shared::{Command, CommandTypes, Response, Signal};
 
 pub struct PlayerContext {
     queue: Queue,
@@ -37,7 +36,7 @@ impl PlayerContext {
 
     pub fn start_player(&mut self) {
         loop {
-            select_biased!{
+            select_biased! {
                 recv(self.receiver) -> packet => {
                     self.interpret_packet(packet.unwrap());
                 },
@@ -51,7 +50,7 @@ impl PlayerContext {
             }
         }
     }
-    
+
     fn play_file(&mut self) {
         let next = match self.queue.peek() {
             Some(path) => path,
@@ -106,7 +105,7 @@ impl PlayerContext {
             CommandTypes::AddQueue => self.add_queue(command, tx),
             CommandTypes::LoopSong => self.loop_song(tx),
             CommandTypes::LoopQueue => self.loop_queue(tx),
-            CommandTypes::SetVolume => {},
+            CommandTypes::SetVolume => {}
             CommandTypes::AddPlaylist => {}
         }
     }
@@ -116,7 +115,7 @@ impl PlayerContext {
             let _ = tx.send(Response::err("no song is currently playing"));
             return;
         }
-        
+
         // this causes start_player to move to the next song on its own
         self.sink.stop();
         let _ = tx.send(Response::ok());
@@ -181,7 +180,9 @@ impl PlayerContext {
 
     fn loop_queue(&mut self, tx: Sender<Response>) {
         if self.queue.is_empty() {
-            let _ = tx.send(Response::err("the queue is currently empty, nothing to loop"));
+            let _ = tx.send(Response::err(
+                "the queue is currently empty, nothing to loop",
+            ));
             return;
         }
 

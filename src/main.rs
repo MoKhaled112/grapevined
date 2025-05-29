@@ -1,18 +1,17 @@
+use crossbeam::channel::{unbounded, Sender};
+use dirs;
+use tracing;
 use tracing_appender::rolling::{RollingFileAppender, Rotation};
 use tracing_subscriber::fmt::writer::BoxMakeWriter;
-use crossbeam::channel::{Sender, unbounded};
-use tracing;
-use dirs;
 
-
-mod shared;
-mod server;
-mod queue;
 mod player;
+mod queue;
+mod server;
+mod shared;
 
-use crate::shared::{Command, Response};
 use crate::player::PlayerContext;
 use crate::server::TcpContext;
+use crate::shared::{Command, Response};
 
 fn create_log_appender() -> RollingFileAppender {
     let logs_dir = dirs::config_dir().unwrap().join("grapevined").join("logs");
@@ -33,7 +32,7 @@ fn main() {
         Some(context) => context,
         None => {
             tracing::error!("terminating grapevined due to server failing to bind");
-            return
+            return;
         }
     };
 

@@ -1,4 +1,4 @@
-use crossbeam::channel::{Receiver, Sender, unbounded};
+use crossbeam::channel::{unbounded, Receiver, Sender};
 use serde::{Deserialize, Serialize};
 
 #[derive(Deserialize, Debug)]
@@ -38,7 +38,7 @@ pub struct Signal {
 impl Signal {
     pub fn new() -> Self {
         let (tx, rx) = unbounded::<()>();
-        Self{ tx, rx }
+        Self { tx, rx }
     }
 }
 
@@ -57,14 +57,14 @@ impl Command {
 
 impl Response {
     pub fn ok() -> Self {
-        Self{
+        Self {
             status: String::from("OK"),
             errmsg: None,
         }
     }
 
     pub fn err(message: &str) -> Self {
-        Self{
+        Self {
             status: String::from("ERR"),
             errmsg: Some(message.to_string()),
         }

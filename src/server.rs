@@ -1,13 +1,13 @@
-use crossbeam::channel::{Sender, bounded};
-use std::net::{TcpStream, TcpListener};
+use crossbeam::channel::{bounded, Sender};
 use std::io::{Read, Write};
+use std::net::{TcpListener, TcpStream};
 use tracing;
 
 use crate::shared::{Command, Response};
 
 pub struct TcpContext {
     transmitter: Sender<(Command, Sender<Response>)>,
-    listener: TcpListener
+    listener: TcpListener,
 }
 
 impl TcpContext {
@@ -47,7 +47,7 @@ fn bind_in_range() -> Option<TcpListener> {
         let addr = format!("127.0.0.1:{}", port);
         if let Ok(listener) = TcpListener::bind(&addr) {
             tracing::info!("grapevined server bound to {}", addr);
-            return Some(listener)
+            return Some(listener);
         }
     }
 
@@ -60,7 +60,7 @@ fn conn_helper(mut conn: TcpStream, tx: Sender<(Command, Sender<Response>)>) {
         Ok(s) => s,
         Err(_) => {
             tracing::error!("failed to read from incomming connection");
-            return
+            return;
         }
     };
 
@@ -68,7 +68,7 @@ fn conn_helper(mut conn: TcpStream, tx: Sender<(Command, Sender<Response>)>) {
         Ok(p) => p,
         Err(_) => {
             tracing::error!("could not deserialze incoming packet");
-            return
+            return;
         }
     };
 
@@ -78,7 +78,7 @@ fn conn_helper(mut conn: TcpStream, tx: Sender<(Command, Sender<Response>)>) {
     let (resp_tx, resp_rx) = bounded::<Response>(1);
     if tx.send((packet, resp_tx)).is_err() {
         tracing::error!("failed to send command to the music thread");
-        return
+        return;
     }
 
     let response = match resp_rx.recv() {
