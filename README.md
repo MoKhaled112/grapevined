@@ -4,6 +4,39 @@
 # grapevined - a music player service
 </div>
 
+## Web UI & HTTP Gateway
+
+This repo now includes:
+
+- `gateway/` – a small Axum HTTP proxy that forwards JSON commands to the TCP daemon (ports 6990–7000)
+- `web/` – a Next.js 14 (TypeScript) UI that calls `/api/*` (rewritten to the gateway via `next.config.mjs`)
+
+## Dev quickstart
+
+Terminal 1 (daemon):
+```bash
+cargo run
+```
+
+Terminal 2 (gateway):
+```bash
+cargo run --manifest-path gateway/Cargo.toml
+```
+
+Terminal 3 (web UI):
+```bash
+cd web
+cp .env.local.example .env.local   # API_URL can be left at default
+npm i
+npm run dev
+# open http://localhost:3000
+```
+
+## Notes
+- The daemon remains local-only on 127.0.0.1; the gateway defaults to 127.0.0.1:8080.
+- The UI calls `/api/*` which Next rewrites to `${API_URL}/api/*` (default `http://localhost:8080`).
+- You can add a `STATUS` command in the daemon later; the UI already has a hook for `/api/status`.
+
 ## Features
 - Support for playing MP3, FLAC, and whatever else Rodio supports without the Symphonia backend for now
 
