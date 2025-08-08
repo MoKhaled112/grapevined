@@ -20,3 +20,8 @@ target
 Cargo.lock
 # env file
 .env
+
+# next.js
+.env.local
+node_modules/
+.next/
